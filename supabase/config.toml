@@ -1,0 +1,7 @@
+[functions]
+  [functions.save-to-notion]
+  enabled = true
+  verify_jwt = true
+  import_map = "./functions/save-to-notion/deno.json"
+  entrypoint = "./functions/save-to-notion/index.ts"
+# static_files = [ "./functions/save-to-notion/*.html" ]

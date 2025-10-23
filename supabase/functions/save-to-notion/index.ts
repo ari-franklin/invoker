@@ -15,7 +15,8 @@ const NOTION_TOKEN = Deno.env.get('NOTION_TOKEN');
 const NOTION_DATABASE_ID = Deno.env.get('NOTION_DATABASE_ID');
 
 if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
-  throw new Error('Missing required environment variables: NOTION_TOKEN, NOTION_DATABASE_ID');
+  console.error('Missing required environment variables');
+  Deno.exit(1);
 }
 
 async function createNotionPage(note: Note) {
@@ -29,7 +30,7 @@ async function createNotionPage(note: Note) {
     body: JSON.stringify({
       parent: { database_id: NOTION_DATABASE_ID },
       properties: {
-        'Name': {
+        Name: {
           title: [
             {
               text: {
@@ -59,11 +60,12 @@ async function createNotionPage(note: Note) {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to create Notion page');
+    const error = await response.text();
+    console.error('Notion API error:', error);
+    throw new Error(`Notion API error: ${error}`);
   }
 
-  return await response.json();
+  return response.json();
 }
 
 serve(async (req) => {
@@ -77,37 +79,34 @@ serve(async (req) => {
     
     if (!title || !content) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: title, content' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Missing required fields: title and content are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const result = await createNotionPage({ title, content });
     
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        page_id: result.id,
-        url: result.url 
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: true, pageId: result.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: error instanceof Error ? error.stack : undefined
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+/* To invoke locally:
+
+  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
+  2. Make an HTTP request:
+
+  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/save-to-notion' \
+    --header 'Authorization: Bearer ' \
+    --header 'Content-Type: application/json' \
+    --data '{"name":"Functions"}'
+
+*/
