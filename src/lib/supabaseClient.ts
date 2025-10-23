@@ -10,10 +10,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+interface SaveToNotionParams {
+  title: string;
+  content: string;
+  labels?: string[];
+  status?: string;
+}
+
 // Function to save transcript to Notion via Supabase Edge Function
-export async function saveToNotion(title: string, content: string) {
+export async function saveToNotion({ title, content, labels, status }: SaveToNotionParams) {
   const { data, error } = await supabase.functions.invoke('save-to-notion', {
-    body: { title, content },
+    body: { 
+      title, 
+      content, 
+      labels, 
+      status 
+    },
   });
 
   if (error) {

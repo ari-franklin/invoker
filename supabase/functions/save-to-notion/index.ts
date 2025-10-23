@@ -9,6 +9,8 @@ const corsHeaders = {
 interface Note {
   title: string;
   content: string;
+  labels?: string[];
+  status?: string;
 }
 
 const NOTION_TOKEN = Deno.env.get('NOTION_TOKEN');
@@ -20,6 +22,36 @@ if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
 }
 
 async function createNotionPage(note: Note) {
+  // Prepare properties object
+  const properties: any = {
+    'Name': {
+      title: [
+        {
+          text: {
+            content: note.title,
+          },
+        },
+      ],
+    },
+    'Date': {
+      date: {
+        start: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+      },
+    },
+    'Status': {
+      multi_select: note.status ? 
+        [{ name: note.status }] : 
+        [{ name: 'To Do' }], // Default status
+    },
+  };
+
+  // Add labels if provided
+  if (note.labels && note.labels.length > 0) {
+    properties['label'] = {
+      multi_select: note.labels.map(label => ({ name: label })),
+    };
+  }
+
   const response = await fetch(`https://api.notion.com/v1/pages`, {
     method: 'POST',
     headers: {
@@ -29,17 +61,7 @@ async function createNotionPage(note: Note) {
     },
     body: JSON.stringify({
       parent: { database_id: NOTION_DATABASE_ID },
-      properties: {
-        Name: {
-          title: [
-            {
-              text: {
-                content: note.title,
-              },
-            },
-          ],
-        },
-      },
+      properties: properties,
       children: [
         {
           object: 'block',
@@ -75,16 +97,24 @@ serve(async (req) => {
   }
 
   try {
-    const { title, content } = await req.json();
+    const { title, content, labels, status } = await req.json();
     
-    if (!title || !content) {
+    if (!content) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: title and content are required' }),
+        JSON.stringify({ error: 'Missing required field: content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const result = await createNotionPage({ title, content });
+    // Use a default title if none provided
+    const noteTitle = title || `Voice Note ${new Date().toLocaleString()}`;
+    
+    const result = await createNotionPage({ 
+      title: noteTitle, 
+      content,
+      labels,
+      status 
+    });
     
     return new Response(
       JSON.stringify({ success: true, pageId: result.id }),
