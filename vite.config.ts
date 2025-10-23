@@ -32,23 +32,28 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24
-              }
-            }
-          }
-        ]
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
   ],
+  server: {
+    port: 3000,
+    proxy: {
+      // Proxy API requests to Supabase
+      '/functions': {
+        target: process.env.VITE_SUPABASE_URL || 'http://localhost:54321',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/functions/, '')
+      },
+      // Local API proxy (if needed)
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

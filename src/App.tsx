@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { saveToNotion } from './lib/supabaseClient';
 
 export default function App() {
   const [status, setStatus] = useState<'idle' | 'ok' | 'error'>('idle');
@@ -78,35 +79,26 @@ export default function App() {
     recognitionRef.current.stop();
     setListening(false);
     const text = (transcript + (interim ? ' ' + interim : '')).trim();
-    await saveToNotion(text);
+    await handleSaveToNotion(text);
   }
 
-  const saveToNotion = async (text: string) => {
+  const handleSaveToNotion = async (text: string) => {
     if (!text.trim()) {
       setMessage('No speech captured');
       return;
     }
     setMessage('Saving to Notion…');
     try {
-      const title = new Date().toLocaleString();
-      const res = await fetch('/api/save-to-notion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          title: `Voice note ${title}`, 
-          content: text 
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data?.detail?.message || data?.error || 'Unknown error');
-      setMessage(`Saved: ${data.page_id}`);
+      const title = `Voice note ${new Date().toLocaleString()}`;
+      const result = await saveToNotion(title, text);
+      setMessage(`Saved to Notion`);
       setInterim('');
       setTranscript('');
+      return result;
     } catch (e) {
       setStatus('error');
-      setMessage(String(e));
+      setMessage(`Error: ${e instanceof Error ? e.message : 'Failed to save to Notion'}`);
+      throw e;
     }
   }
 

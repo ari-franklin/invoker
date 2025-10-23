@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@notionhq/client": "^5.3.0",
+    "@supabase/supabase-js": "^2.76.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
